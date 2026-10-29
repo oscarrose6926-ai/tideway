@@ -19,11 +19,18 @@ if (-not (Test-Path (Join-Path $web 'node_modules'))) {
     try { & npm install } finally { Pop-Location }
 }
 
+# Keep the port in sync with what the FastAPI app tells its global
+# media-key listener. Without this, the listener defaults to 47823
+# (the packaged-app port) and the media-key POSTs silently 404 in
+# dev because uvicorn is actually on 8000. Child processes started by
+# Start-Process inherit this environment.
+$env:TIDAL_DL_PORT = '8000'
+
 # Start-Process with -NoNewWindow pipes stdout/stderr into this console so
 # both servers' logs interleave here, matching run.sh's behavior.
-Write-Host "Starting FastAPI on http://127.0.0.1:8000"
+Write-Host "Starting FastAPI on http://127.0.0.1:$env:TIDAL_DL_PORT"
 $api = Start-Process -FilePath $py `
-    -ArgumentList '-m', 'uvicorn', 'server:app', '--host', '127.0.0.1', '--port', '8000', '--reload' `
+    -ArgumentList '-m', 'uvicorn', 'server:app', '--host', '127.0.0.1', '--port', $env:TIDAL_DL_PORT, '--reload' `
     -WorkingDirectory $root -PassThru -NoNewWindow
 
 Write-Host "Starting Vite on http://127.0.0.1:5173"
